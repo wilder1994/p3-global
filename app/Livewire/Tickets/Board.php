@@ -10,17 +10,26 @@ use Illuminate\Support\Facades\Auth;
 class Board extends Component
 {
     public $search = '';
+
+    // 👉 Tickets activos para la tabla
     public $tickets = [
         'pendiente'  => [],
         'en_proceso' => [],
         'validacion' => [],
-        'finalizado'   => [],
     ];
 
-    public $mostrarModal = false;   // 👈 controla el modal
-    public $ticketSeleccionado;     // 👈 ticket en edición
-    public $nuevoEstado;            // 👈 estado al que se moverá
-    public $comentario = '';        // 👈 comentario escrito por el usuario
+    // 👉 Conteos para las tarjetas
+    public $conteos = [
+        'pendiente'  => 0,
+        'en_proceso' => 0,
+        'validacion' => 0,
+        'finalizado' => 0,
+    ];
+
+    public $mostrarModal = false;   // controla el modal
+    public $ticketSeleccionado;     // ticket en edición
+    public $nuevoEstado;            // estado al que se moverá
+    public $comentario = '';        // comentario escrito por el usuario
 
     protected $listeners = ['ticketCreado' => 'loadTickets'];
 
@@ -54,11 +63,11 @@ class Board extends Component
         $ticket->save();
 
         TicketLog::create([
-            'ticket_id'      => $ticket->id,
-            'usuario_id'     => Auth::id(),
-            'estado_anterior'=> $estadoAnterior,
-            'estado_nuevo'   => $this->nuevoEstado,
-            'comentario'     => $this->comentario,
+            'ticket_id'       => $ticket->id,
+            'usuario_id'      => Auth::id(),
+            'estado_anterior' => $estadoAnterior,
+            'estado_nuevo'    => $this->nuevoEstado,
+            'comentario'      => $this->comentario,
         ]);
 
         $this->mostrarModal = false;
@@ -74,39 +83,43 @@ class Board extends Component
     {
         $ordenPrioridad = "FIELD(prioridad,'urgente','alta','media','baja')";
 
-        $query = Ticket::with('creador')
-            ->where('estado', '!=', 'finalizado') // <-- excluye tickets finalizados
+        // Traemos todos los tickets (para conteos)
+        $todos = Ticket::with('creador')
             ->orderByRaw($ordenPrioridad)
             ->latest();
 
         if ($this->search) {
             $search = $this->search;
-            $query->where(function($q) use ($search) {
+            $todos->where(function($q) use ($search) {
                 $q->where('titulo', 'like', "%{$search}%")
-                ->orWhere('descripcion', 'like', "%{$search}%")
-                ->orWhere('prioridad', 'like', "%{$search}%")
-                ->orWhere('estado', 'like', "%{$search}%")
-                ->orWhereHas('creador', function($q2) use ($search) {
-                    $q2->where('name', 'like', "%{$search}%");
-                });
+                    ->orWhere('descripcion', 'like', "%{$search}%")
+                    ->orWhere('prioridad', 'like', "%{$search}%")
+                    ->orWhere('estado', 'like', "%{$search}%")
+                    ->orWhereHas('creador', function($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
-        $tickets = $query->get();
+        $todos = $todos->get();
 
-        // Filtramos solo tickets activos (sin finalizados)
-        $ticketsActivos = $tickets->filter(fn($t) => strtolower($t->estado) !== 'finalizado');
+        // 👉 Conteos para tarjetas
+        $this->conteos = [
+            'pendiente'  => $todos->where('estado', 'pendiente')->count(),
+            'en_proceso' => $todos->where('estado', 'en_proceso')->count(),
+            'validacion' => $todos->where('estado', 'validacion')->count(),
+            'finalizado' => $todos->where('estado', 'finalizado')->count(),
+        ];
+
+        // 👉 Solo tickets activos para la tabla
+        $activos = $todos->filter(fn($t) => strtolower($t->estado) !== 'finalizado');
 
         $this->tickets = [
-            'pendiente'  => $ticketsActivos->filter(fn($t) => strtolower($t->estado) === 'pendiente'),
-            'en_proceso' => $ticketsActivos->filter(fn($t) => strtolower($t->estado) === 'en_proceso'),
-            'validacion' => $ticketsActivos->filter(fn($t) => strtolower($t->estado) === 'validacion'),
+            'pendiente'  => $activos->filter(fn($t) => strtolower($t->estado) === 'pendiente'),
+            'en_proceso' => $activos->filter(fn($t) => strtolower($t->estado) === 'en_proceso'),
+            'validacion' => $activos->filter(fn($t) => strtolower($t->estado) === 'validacion'),
         ];
     }
-
-
-
-
 
     public function updatedSearch()
     {
@@ -124,7 +137,7 @@ class Board extends Component
     // Abrir modal con detalles
     public function verDetalles($id)
     {
-        $this->ticketDetalle = Ticket::with(['usuario', 'logs.usuario'])->find($id);
+        $this->ticketDetalle = Ticket::with(['creador', 'logs.usuario'])->find($id);
         $this->mostrarModalDetalles = true;
     }
 

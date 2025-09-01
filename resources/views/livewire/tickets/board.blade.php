@@ -15,11 +15,12 @@
             <div class="bg-white rounded-xl p-3 shadow text-center">
                 <h3 class="font-semibold mb-2">{{ $titulo }}</h3>
                 <div class="text-3xl font-bold text-blue-600">
-                    {{ count($tickets[$key] ?? []) }}
+                    {{ $conteos[$key] ?? 0 }}
                 </div>
             </div>
         @endforeach
     </div>
+
 
     {{-- 📋 Listado general de tickets con scroll --}}
     <div class="flex-1 bg-white shadow rounded-lg p-4 overflow-auto">
@@ -113,7 +114,9 @@
      {{-- Modal de confirmación de estado --}}
     @if($mostrarModal)
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-lg p-6 w-1/3">
+            <div class="bg-white rounded-lg shadow-lg p-6 
+                        w-[90%] sm:w-[80%] md:w-[500px] lg:w-[600px] 
+                        max-h-[90vh] overflow-y-auto mx-auto">
                 <h2 class="text-lg font-bold mb-4">Confirmar cambio de estado</h2>
                 <p class="mb-2 text-gray-700">
                     Este ticket pasará al estado:
@@ -137,14 +140,16 @@
     {{-- Modal de detalles del ticket --}}
     @if($mostrarModalDetalles && $ticketDetalle)
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-lg p-6 w-1/2">
+            <div class="bg-white rounded-lg shadow-lg p-6 
+                        w-[95%] sm:w-[85%] md:w-[700px] lg:w-[900px] 
+                        max-h-[90vh] overflow-y-auto mx-auto">
                 <h2 class="text-lg font-bold mb-4">Detalles del Ticket #{{ $ticketDetalle->id }}</h2>
 
                 <p><strong>Título:</strong> {{ $ticketDetalle->titulo }}</p>
                 <p><strong>Descripción:</strong> {{ $ticketDetalle->descripcion }}</p>
                 <p><strong>Estado:</strong> {{ ucfirst($ticketDetalle->estado) }}</p>
                 <p><strong>Prioridad:</strong> {{ ucfirst($ticketDetalle->prioridad) }}</p>
-                <p><strong>Creado por:</strong> {{ $ticketDetalle->usuario?->name ?? '—' }}</p>
+                <p><strong>Creado por:</strong> {{ $ticketDetalle->creador?->name ?? '—' }}</p>
                 <p><strong>Fecha de creación:</strong> {{ $ticketDetalle->created_at->format('d/m/Y H:i') }}</p>
 
                 <h3 class="mt-4 font-semibold">Historial</h3>
