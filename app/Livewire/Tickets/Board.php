@@ -24,6 +24,8 @@ class Board extends Component
         'en_proceso' => 0,
         'validacion' => 0,
         'finalizado' => 0,
+        'rechazado'  => 0,
+        'cerrado'    => 0,
     ];
 
     public $mostrarModal = false;   // controla el modal
@@ -85,8 +87,9 @@ class Board extends Component
 
         // Traemos todos los tickets (para conteos)
         $todos = Ticket::with('creador')
-            ->orderByRaw($ordenPrioridad)
-            ->latest();
+        ->orderByRaw($ordenPrioridad)   // primero por prioridad
+        ->orderByDesc('created_at');    // después por fecha
+
 
         if ($this->search) {
             $search = $this->search;
@@ -103,16 +106,18 @@ class Board extends Component
 
         $todos = $todos->get();
 
-        // 👉 Conteos para tarjetas
+        // 👉 Conteos para tarjetas (ahora incluye rechazado y cerrado)
         $this->conteos = [
             'pendiente'  => $todos->where('estado', 'pendiente')->count(),
             'en_proceso' => $todos->where('estado', 'en_proceso')->count(),
             'validacion' => $todos->where('estado', 'validacion')->count(),
             'finalizado' => $todos->where('estado', 'finalizado')->count(),
+            'rechazado'  => $todos->where('estado', 'rechazado')->count(),
+            'cerrado'    => $todos->where('estado', 'cerrado')->count(),
         ];
 
-        // 👉 Solo tickets activos para la tabla
-        $activos = $todos->filter(fn($t) => strtolower($t->estado) !== 'finalizado');
+        // 👉 Solo tickets activos (excluimos finalizado, rechazado y cerrado)
+        $activos = $todos->filter(fn($t) => !in_array(strtolower($t->estado), ['finalizado','rechazado','cerrado']));
 
         $this->tickets = [
             'pendiente'  => $activos->filter(fn($t) => strtolower($t->estado) === 'pendiente'),
@@ -140,5 +145,4 @@ class Board extends Component
         $this->ticketDetalle = Ticket::with(['creador', 'logs.usuario'])->find($id);
         $this->mostrarModalDetalles = true;
     }
-
 }

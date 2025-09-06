@@ -30,9 +30,12 @@
             <thead>
                 <tr class="bg-gray-100">
                     <th class="p-2 border text-left">Fecha</th>
+                    <th class="p-2 border text-left">Asunto</th>
                     <th class="p-2 border text-left">Puesto</th>
+                    <th class="p-2 border text-left">Cargo</th>
+                    <th class="p-2 border text-left">Nombre guarda</th>
+                    <th class="p-2 border text-left">Cédula</th>
                     <th class="p-2 border text-left">Descripción</th>
-                    <th class="p-2 border text-left">Acciones</th>
                     <th class="p-2 border text-left">Prioridad</th>
                     <th class="p-2 border text-left">Creado</th>
                     <th class="p-2 border text-center">Detalles</th>
@@ -40,20 +43,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php
-                    $prioridades = [
-                        'urgente' => 4,
-                        'alta'    => 3,
-                        'media'   => 2,
-                        'baja'    => 1,
-                    ];
-
-                    $ticketsOrdenados = collect($tickets)
-                        ->collapse() // en lugar de flatten(1)
-                        ->sortByDesc(fn($ticket) => $prioridades[strtolower($ticket->prioridad)] ?? 0);
-                @endphp
-
-                @forelse ($ticketsOrdenados as $t)
+                @forelse (collect($tickets)->collapse() as $t)
                     @php
                         $rowColor = match(strtolower($t->prioridad)) {
                             'urgente' => 'bg-red-300',
@@ -73,11 +63,14 @@
 
                     <tr class="{{ $rowColor }} hover:border-2 hover:border-gray-500 transition-all">
                         <td class="p-2 border">{{ $t->created_at->format('d/m/Y H:i') }}</td>
-                        <td class="p-2 border">{{ $t->titulo }}</td>
+                        <td class="p-2 border">{{ $t->titulo }}</td> {{-- Asunto --}}
+                        <td class="p-2 border">{{ $t->puesto }}</td>
+                        <td class="p-2 border">{{ $t->cargo }}</td>
+                        <td class="p-2 border">{{ $t->nombre_guarda }}</td>
+                        <td class="p-2 border">{{ $t->cedula_guarda }}</td>
                         <td class="p-2 border">{{ $t->descripcion }}</td>
-                        <td class="p-2 border capitalize">{{ $t->estado }}</td>
                         <td class="p-2 border font-semibold">{{ ucfirst($t->prioridad) }}</td>
-                        <td class="p-2 border">{{ $t->creador ? $t->creador->name : '---' }}</td>
+                        <td class="p-2 border">{{ $t->creador?->name ?? '---' }}</td>
                         <td class="p-2 border text-center">
                             <button wire:click="verDetalles({{ $t->id }})"
                                 class="px-3 py-1 rounded bg-gray-600 text-white whitespace-nowrap">
@@ -101,7 +94,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center p-4 text-gray-500">
+                        <td colspan="11" class="text-center p-4 text-gray-500">
                             No hay tickets registrados
                         </td>
                     </tr>
@@ -145,12 +138,17 @@
                         max-h-[90vh] overflow-y-auto mx-auto">
                 <h2 class="text-lg font-bold mb-4">Detalles del Ticket #{{ $ticketDetalle->id }}</h2>
 
-                <p><strong>Título:</strong> {{ $ticketDetalle->titulo }}</p>
+                <p><strong>Asunto:</strong> {{ $ticketDetalle->titulo }}</p>
+                <p><strong>Puesto:</strong> {{ $ticketDetalle->puesto }}</p>
+                <p><strong>Cargo:</strong> {{ $ticketDetalle->cargo }}</p>
+                <p><strong>Nombre del guarda:</strong> {{ $ticketDetalle->nombre_guarda }}</p>
+                <p><strong>Cédula del guarda:</strong> {{ $ticketDetalle->cedula_guarda }}</p>
                 <p><strong>Descripción:</strong> {{ $ticketDetalle->descripcion }}</p>
                 <p><strong>Estado:</strong> {{ ucfirst($ticketDetalle->estado) }}</p>
                 <p><strong>Prioridad:</strong> {{ ucfirst($ticketDetalle->prioridad) }}</p>
                 <p><strong>Creado por:</strong> {{ $ticketDetalle->creador?->name ?? '—' }}</p>
                 <p><strong>Fecha de creación:</strong> {{ $ticketDetalle->created_at->format('d/m/Y H:i') }}</p>
+
 
                 <h3 class="mt-4 font-semibold">Historial</h3>
                 <ul class="list-disc pl-6">

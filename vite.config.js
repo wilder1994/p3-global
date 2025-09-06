@@ -9,13 +9,12 @@ export default defineConfig({
         }),
     ],
     server: {
-        host: '0.0.0.0',
+        host: '127.0.0.1',
         port: 5173,
         cors: true,
         hmr: {
-            host: '663adf3b8b70.ngrok-free.app',
-            protocol: 'wss',
+            host: '127.0.0.1',
+            protocol: 'ws',
         },
-
     },
 });
