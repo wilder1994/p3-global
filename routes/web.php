@@ -13,9 +13,10 @@ use App\Livewire\Tickets\Finalizados;
 */
 
 
-Route::get('/tickets/finalizados', Finalizados::class)
-    ->name('tickets.finalizados');
-
+Route::get('/tickets/finalizados', function () {
+    return view('livewire.tickets.finalizados-page');
+})->middleware(['auth', 'verified'])
+  ->name('tickets.finalizados');
 
 Route::view('/', 'welcome');
 

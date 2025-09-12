@@ -25,13 +25,14 @@
         <!-- Hero -->
         <div class="text-center max-w-3xl">
             <!-- Logo -->
-            <img src="{{ asset('images/logo.png') }}" alt="P3 Seguridad Privada LTDA" class="h-28 mx-auto mb-6">
+            <img src="{{ asset('images/logo.png') }}" alt="P3 Seguridad Privada LTDA" 
+                class="h-36 w-36 rounded-full mx-auto mb-6 object-cover shadow-md">
 
             <h1 class="text-4xl md:text-5xl font-bold mb-4">
-                Bienvenido a <span class="text-blue-400">P3 Seguridad Privada LTDA</span>
+                Bienvenido a <span class="text-withe-700">P3 Seguridad LTDA</span>
             </h1>
             <p class="text-lg text-gray-300">
-                Protegiendo lo que más importa con soluciones de seguridad privada confiables.
+                Protegiendo lo que más nos importa con soluciones de seguridad confiables.
             </p>
         </div>
 

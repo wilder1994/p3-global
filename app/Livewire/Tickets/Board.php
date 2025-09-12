@@ -5,51 +5,68 @@ namespace App\Livewire\Tickets;
 use Livewire\Component;
 use App\Models\Ticket;
 use App\Models\TicketLog;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class Board extends Component
 {
     public $search = '';
 
-    // 👉 Tickets activos para la tabla
     public $tickets = [
         'pendiente'  => [],
         'en_proceso' => [],
         'validacion' => [],
     ];
 
-    // 👉 Conteos para las tarjetas
     public $conteos = [
         'pendiente'  => 0,
         'en_proceso' => 0,
         'validacion' => 0,
         'finalizado' => 0,
+        'rechazado'  => 0,
+        'cerrado'    => 0,
     ];
 
-    public $mostrarModal = false;   // controla el modal
-    public $ticketSeleccionado;     // ticket en edición
-    public $nuevoEstado;            // estado al que se moverá
-    public $comentario = '';        // comentario escrito por el usuario
+    public $mostrarModal = false;
+    public $ticketSeleccionado;
+    public $nuevoEstado;
+    public $comentario = '';
+    public $responsable = null;
+    public $usuarios;
 
-    protected $listeners = ['ticketCreado' => 'loadTickets'];
+    public $mostrarModalDetalles = false;
+    public $ticketDetalle = null;
+
+    protected $listeners = [
+        'ticketCreado' => 'loadTickets',
+        'finalizarTicketDesdeModal' => 'finalizarTicketDesdeModal',
+        'aprobarTicketDesdeModal' => 'aprobarTicketDesdeModal',
+    ];
 
     public function mount()
     {
         $this->loadTickets();
+        $this->usuarios = User::all();
     }
 
-    // abrir modal antes de confirmar
     public function confirmarCambioEstado($id, $estado)
     {
+        $ticket = Ticket::find($id);
         $this->ticketSeleccionado = $id;
         $this->nuevoEstado = $estado;
         $this->comentario = '';
+        $this->responsable = $ticket->asignado_a;
         $this->mostrarModal = true;
     }
 
-    // guardar cambio con log
     public function guardarCambioEstado()
     {
+        $this->validate([
+            'comentario' => 'required|string|min:3',
+        ], [
+            'comentario.required' => 'Debe escribir un comentario para continuar.',
+        ]);
+
         $ticket = Ticket::find($this->ticketSeleccionado);
 
         if (! $ticket) {
@@ -58,8 +75,16 @@ class Board extends Component
         }
 
         $estadoAnterior = $ticket->estado;
-
+        $asignadoAnterior = $ticket->asignado_a;
         $ticket->estado = $this->nuevoEstado;
+
+        $comentarioFinal = $this->comentario;
+
+        if ($this->responsable && $this->responsable != $asignadoAnterior) {
+            $ticket->asignado_a = $this->responsable;
+            $comentarioFinal = "[Cambio de responsable] " . $comentarioFinal;
+        }
+
         $ticket->save();
 
         TicketLog::create([
@@ -67,26 +92,89 @@ class Board extends Component
             'usuario_id'      => Auth::id(),
             'estado_anterior' => $estadoAnterior,
             'estado_nuevo'    => $this->nuevoEstado,
-            'comentario'      => $this->comentario,
+            'comentario'      => $comentarioFinal,
         ]);
 
-        $this->mostrarModal = false;
-        $this->ticketSeleccionado = null;
-        $this->comentario = '';
-
+        $this->resetModal();
         $this->loadTickets();
 
-        session()->flash('success', 'Estado actualizado y log registrado.');
+        session()->flash('success', 'Estado actualizado correctamente.');
+    }
+
+    public function finalizarTicketDesdeModal()
+    {
+        $this->validate([
+            'comentario' => 'required|string|min:3',
+        ], [
+            'comentario.required' => 'Debe escribir un comentario para finalizar el ticket.',
+        ]);
+
+        $this->finalizarTicket($this->ticketSeleccionado, $this->comentario);
+        $this->resetModal();
+    }
+
+    public function aprobarTicketDesdeModal()
+    {
+        $this->validate([
+            'comentario' => 'required|string|min:3',
+        ], [
+            'comentario.required' => 'Debe escribir un comentario para aprobar el ticket.',
+        ]);
+
+        $this->aprobarTicket($this->ticketSeleccionado, $this->comentario);
+        $this->resetModal();
+    }
+
+    public function finalizarTicket($id, $comentario = null)
+    {
+        $ticket = Ticket::find($id);
+
+        if (! $ticket) return;
+
+        $estadoAnterior = $ticket->estado;
+        $ticket->estado = 'finalizado';
+        $ticket->save();
+
+        TicketLog::create([
+            'ticket_id'       => $ticket->id,
+            'usuario_id'      => Auth::id(),
+            'estado_anterior' => $estadoAnterior,
+            'estado_nuevo'    => 'finalizado',
+            'comentario'      => $comentario ?? 'Finalizado directamente',
+        ]);
+
+        $this->loadTickets();
+    }
+
+    public function aprobarTicket($id, $comentario = null)
+    {
+        $ticket = Ticket::find($id);
+
+        if (! $ticket) return;
+
+        $estadoAnterior = $ticket->estado;
+        $ticket->estado = 'validacion';
+        $ticket->aprobado_por = Auth::id();
+        $ticket->save();
+
+        TicketLog::create([
+            'ticket_id'       => $ticket->id,
+            'usuario_id'      => Auth::id(),
+            'estado_anterior' => $estadoAnterior,
+            'estado_nuevo'    => 'validacion',
+            'comentario'      => $comentario ?? 'Aprobado directamente',
+        ]);
+
+        $this->loadTickets();
     }
 
     protected function loadTickets()
     {
         $ordenPrioridad = "FIELD(prioridad,'urgente','alta','media','baja')";
 
-        // Traemos todos los tickets (para conteos)
-        $todos = Ticket::with('creador')
+        $todos = Ticket::with(['creador', 'asignado'])
             ->orderByRaw($ordenPrioridad)
-            ->latest();
+            ->orderByDesc('created_at');
 
         if ($this->search) {
             $search = $this->search;
@@ -103,21 +191,21 @@ class Board extends Component
 
         $todos = $todos->get();
 
-        // 👉 Conteos para tarjetas
         $this->conteos = [
             'pendiente'  => $todos->where('estado', 'pendiente')->count(),
             'en_proceso' => $todos->where('estado', 'en_proceso')->count(),
             'validacion' => $todos->where('estado', 'validacion')->count(),
             'finalizado' => $todos->where('estado', 'finalizado')->count(),
+            'rechazado'  => $todos->where('estado', 'rechazado')->count(),
+            'cerrado'    => $todos->where('estado', 'cerrado')->count(),
         ];
 
-        // 👉 Solo tickets activos para la tabla
-        $activos = $todos->filter(fn($t) => strtolower($t->estado) !== 'finalizado');
+        $activos = $todos->filter(fn($t) => !in_array(strtolower($t->estado), ['finalizado','rechazado','cerrado']));
 
         $this->tickets = [
-            'pendiente'  => $activos->filter(fn($t) => strtolower($t->estado) === 'pendiente'),
-            'en_proceso' => $activos->filter(fn($t) => strtolower($t->estado) === 'en_proceso'),
-            'validacion' => $activos->filter(fn($t) => strtolower($t->estado) === 'validacion'),
+            'pendiente'  => $activos->where('estado', 'pendiente'),
+            'en_proceso' => $activos->where('estado', 'en_proceso'),
+            'validacion' => $activos->where('estado', 'validacion'),
         ];
     }
 
@@ -131,14 +219,17 @@ class Board extends Component
         return view('livewire.tickets.board');
     }
 
-    public $mostrarModalDetalles = false;
-    public $ticketDetalle = null;
-
-    // Abrir modal con detalles
     public function verDetalles($id)
     {
         $this->ticketDetalle = Ticket::with(['creador', 'logs.usuario'])->find($id);
         $this->mostrarModalDetalles = true;
     }
 
+    protected function resetModal()
+    {
+        $this->mostrarModal = false;
+        $this->comentario = '';
+        $this->responsable = null;
+        $this->ticketSeleccionado = null;
+    }
 }

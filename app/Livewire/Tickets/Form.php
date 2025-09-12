@@ -4,40 +4,62 @@ namespace App\Livewire\Tickets;
 
 use Livewire\Component;
 use App\Models\Ticket;
+use App\Models\User;
+use Illuminate\Validation\Rule;
 
 class Form extends Component
 {
-    public $puesto, $tipo_novedad, $descripcion, $prioridad = 'media';
+    public $puesto;
+    public $asunto;
+    public $cargo;
+    public $nombre;
+    public $cedula;
+    public $responsable;
+    public $descripcion;
+    public $prioridad = 'media';
 
-    protected $rules = [
-        'puesto'       => 'required|min:3',
-        'descripcion'  => 'required|string|min:3',
-        'prioridad'    => 'required|in:urgente,alta,media,baja',
-    ];
+    public function rules()
+    {
+        return [
+            'puesto'      => 'required|string|min:3',
+            'asunto'      => 'required|string|min:3',
+            'cargo'       => 'required|string|min:2',
+            'nombre'      => 'required|string|min:3',
+            'cedula'      => 'required|regex:/^\d{6,20}$/',
+            'responsable' => 'required|exists:users,id',
+            'descripcion' => 'required|string|min:3',
+            'prioridad'   => ['required', Rule::in(['urgente','alta','media','baja'])],
+        ];
+    }
 
     public function crear()
     {
         $this->validate();
 
         Ticket::create([
-            'titulo'       => $this->puesto,         // ⚠️ aquí lo guardamos como 'titulo' en la DB
-            'descripcion'  => $this->descripcion,
-            'prioridad'    => $this->prioridad,
-            'estado'       => 'pendiente',           // por defecto
-            'creado_por'   => auth()->id(),
+            'titulo'        => $this->asunto,
+            'puesto'        => $this->puesto,
+            'cargo'         => $this->cargo,
+            'nombre_guarda' => $this->nombre,
+            'cedula_guarda' => $this->cedula,
+            'descripcion'   => $this->descripcion,
+            'prioridad'     => $this->prioridad,
+            'estado'        => 'pendiente',
+            'creado_por'    => auth()->id(),
+            'asignado_a'    => $this->responsable,
         ]);
 
-        // Reseteamos el formulario
-        $this->reset(['puesto','descripcion','prioridad']);
+        $this->reset(['puesto','asunto','cargo','nombre','cedula','responsable','descripcion']);
         $this->prioridad = 'media';
 
-        // Notificación al frontend
         $this->dispatch('ticketCreado');
-        $this->dispatch('notify', msg: 'Ticket creado');
+        $this->dispatch('notify', msg: 'Ticket creado correctamente');
     }
 
     public function render()
     {
-        return view('livewire.tickets.form');
+        return view('livewire.tickets.form', [
+            'usuarios' => User::all(), // 👈 listado de responsables reales
+        ]);
     }
 }

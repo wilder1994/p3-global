@@ -9,13 +9,13 @@ export default defineConfig({
         }),
     ],
     server: {
-        host: '0.0.0.0',
+        host: '0.0.0.0',   // escucha en todas las interfaces
         port: 5173,
         cors: true,
         hmr: {
-            host: '663adf3b8b70.ngrok-free.app',
-            protocol: 'wss',
+            host: 'p3-global.test',  // o IP local si prefieres
+            protocol: 'ws',          // sin HTTPS usa 'ws'
         },
-
     },
 });
+
