@@ -1,5 +1,5 @@
 <div class="p-4 bg-white rounded-xl shadow">
-    <h3 class="font-semibold mb-3">Nueva novedad</h3>
+    <h3 class="font-semibold mb-3">MEMORANDO</h3>
 
     {{-- Notificación simple --}}
     <div 

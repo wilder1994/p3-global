@@ -162,10 +162,10 @@
                         </button>
 
                         {{-- Aprobar directamente --}}
-                       <button wire:click="aprobarTicketDesdeModal"
+                        {{-- <button wire:click="aprobarTicketDesdeModal"
                             class="bg-green-600 text-white px-4 py-2 rounded">
                             Aprobar
-                        </button>
+                        </button> --}}
 
                         {{-- Finalizar directamente --}}
                         <button wire:click="finalizarTicketDesdeModal"
