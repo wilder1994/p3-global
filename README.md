@@ -24,9 +24,12 @@ Dependencias de compilación front en `package.json`:
 - `vite` ^4, `laravel-vite-plugin`, `tailwindcss` ^3, `@tailwindcss/forms`, `autoprefixer`, `axios`.
 
 ## Puesta en marcha
-1. Instalar dependencias de PHP y JavaScript:
+1. Tras clonar el repositorio, instala las dependencias de PHP y JavaScript:
    ```bash
    composer install
+   # para entornos CI/CD o instalaciones reproducibles usa:
+   npm ci
+   # en desarrollo interactivo se admite igualmente:
    npm install
    ```
 2. Copiar el archivo de entorno y generar la clave de la aplicación:
@@ -48,6 +51,11 @@ Dependencias de compilación front en `package.json`:
    php artisan serve
    ```
    Para compilaciones listas para producción utiliza `npm run build`.
+
+## Verificación de scripts front-end
+- Compilación de producción: `npm run build`.
+- Servidor de desarrollo (Vite): `npm run dev`.
+  - Este comando debe ejecutarse sin errores antes de abrir un Pull Request.
 
 ## Configuración de entorno (`.env`)
 - **APP_NAME / APP_URL**: nombre y URL pública que se mostrará en la interfaz.
