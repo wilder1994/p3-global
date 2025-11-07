@@ -56,7 +56,12 @@ class Board extends Component
 
     public function confirmarCambioEstado($id, $estado)
     {
-        $ticket = Ticket::find($id);
+        $ticket = $this->findTicketOrNotify($id);
+
+        if (! $ticket) {
+            return;
+        }
+
         $this->ticketSeleccionado = $id;
         $this->nuevoEstado = $estado;
         $this->comentario = '';
@@ -132,7 +137,7 @@ class Board extends Component
 
     public function finalizarTicket($id, $comentario = null)
     {
-        $ticket = Ticket::find($id);
+        $ticket = $this->findTicketOrNotify($id);
 
         if (! $ticket) return;
 
@@ -153,7 +158,7 @@ class Board extends Component
 
     public function aprobarTicket($id, $comentario = null)
     {
-        $ticket = Ticket::find($id);
+        $ticket = $this->findTicketOrNotify($id);
 
         if (! $ticket) return;
 
@@ -171,6 +176,19 @@ class Board extends Component
         ]);
 
         $this->loadTickets();
+    }
+
+    protected function findTicketOrNotify($id): ?Ticket
+    {
+        $ticket = Ticket::find($id);
+
+        if (! $ticket) {
+            session()->flash('error', 'Ticket no encontrado.');
+
+            return null;
+        }
+
+        return $ticket;
     }
 
     protected function loadTickets()
