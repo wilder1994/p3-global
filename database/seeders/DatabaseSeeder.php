@@ -10,12 +10,11 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
-   public function run()
+    public function run()
     {
-        // Solo ejecutar el seeder si estás en entorno local
-        if (app()->environment('local')) {
-            $this->call(UserSeeder::class);
-        }
+        // Mantén este método intencionalmente vacío para trabajar únicamente con datos reales.
+        // Ejecuta seeders de soporte de manera manual cuando se requiera, por ejemplo:
+        // php artisan db:seed --class=RolesAndPermissionsSeeder
     }
 
 

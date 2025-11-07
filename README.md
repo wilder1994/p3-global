@@ -44,7 +44,7 @@ Dependencias de compilación front en `package.json`:
    php artisan db:seed --class=RolesAndPermissionsSeeder
    php artisan permission:cache-reset
    ```
-   > El `DatabaseSeeder` solo ejecuta `UserSeeder` cuando `APP_ENV=local`, por lo que en producción únicamente se crearán los registros que importes manualmente.
+   > El `DatabaseSeeder` no ejecuta seeders automáticos; trabaja exclusivamente con datos reales y lanza de forma manual los procesos que necesites.
 5. Construir y levantar los servicios durante el desarrollo:
    ```bash
    npm run dev
@@ -80,7 +80,6 @@ Las migraciones relevantes se encuentran en `database/migrations`:
 
 Seeders disponibles:
 - `database/seeders/RolesAndPermissionsSeeder.php`: crea los permisos `tickets.*` y `admin.usuarios`, además de los roles (`operaciones`, `supervisor_control`, `coordinador_ti`, `validador`, `gerencia`, `admin`).
-- `database/seeders/UserSeeder.php`: genera usuarios de ejemplo (solo en entorno local).
 
 Si importas una copia de datos reales asegúrate de ejecutar `php artisan permission:cache-reset` para que los roles aplicados se reflejen de inmediato.
 
