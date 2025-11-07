@@ -45,7 +45,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse (collect($tickets)->collapse() as $t)
+                    @forelse ($ticketsPlanos as $t)
                         @php
                             $rowColor = match(strtolower($t->prioridad)) {
                                 'urgente' => 'bg-red-300',
