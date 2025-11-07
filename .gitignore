@@ -1,3 +1,4 @@
+# Node dependencies (instala con `npm install` o `npm ci` tras clonar)
 /node_modules
 /public/hot
 /public/storage
