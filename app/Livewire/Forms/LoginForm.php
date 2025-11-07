@@ -30,7 +30,10 @@ class LoginForm extends Form
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only(['email', 'password']), $this->remember)) {
+        // Verificar credenciales manualmente
+        $credentials = $this->only(['email', 'password']);
+
+        if (!Auth::attempt($credentials, $this->remember)) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -38,8 +41,22 @@ class LoginForm extends Form
             ]);
         }
 
+        // ✅ Usuario autenticado correctamente
+        $user = Auth::user();
+
+        // 🚨 Validar si está inactivo
+        if (!$user->is_active) {
+            Auth::logout(); // cerrar cualquier inicio
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'form.email' => 'Tu cuenta está inactiva. Contacta al administrador.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
+
 
     /**
      * Ensure the authentication request is not rate limited.
