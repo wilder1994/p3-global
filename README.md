@@ -67,7 +67,6 @@ php artisan route:cache
 Las migraciones relevantes se encuentran en `database/migrations`:
 - `2025_08_26_171700_create_tickets_table.php`: crea la tabla principal de tickets.
 - `2025_08_27_091310_create_ticket_logs_table.php`: almacena el historial de cambios por ticket.
-- `2025_08_27_204650_update_estado_enum_in_tickets_table.php`: actualiza el catálogo de estados.
 - `2025_08_26_170633_create_permission_tables.php`: tablas requeridas por Spatie Permission.
 - `2025_10_01_213840_add_is_active_to_users_table.php`: indicador de usuarios activos.
 
@@ -96,6 +95,18 @@ Si importas una copia de datos reales asegúrate de ejecutar `php artisan permis
   - `Board.php` muestra tickets activos, permite cambiar estados, reasignar responsables y registra los eventos en `TicketLog`.
   - `Finalizados.php` lista los tickets completados con filtros por prioridad y buscador.
 - **Permisos Spatie**: además del seeder, los middlewares `role`, `permission` y `role_or_permission` se registran en `app/Http/Kernel.php`; la configuración completa está en `config/permission.php`.
+
+## Reglas de negocio para los estados de tickets
+Los estados disponibles se definen en `App\Models\Ticket::ESTADOS` y siguen este flujo:
+
+1. **pendiente** → el ticket acaba de crearse y está a la espera de ser atendido.
+2. **en_proceso** → el responsable está trabajando activamente en la solicitud.
+3. **validacion** → el trabajo ha sido completado y requiere aprobación o validación.
+4. **finalizado** → el ticket fue aprobado y queda cerrado automáticamente.
+5. **rechazado** → la validación falló; se documenta el motivo y no vuelve al tablero activo.
+6. **cerrado** → clausura manual por un administrador (por ejemplo, por duplicados o errores).
+
+El tablero (`App\Livewire\Tickets\Board`) solo muestra los estados activos (`pendiente`, `en_proceso`, `validacion`). Los estados finales (`finalizado`, `rechazado`, `cerrado`) se reflejan en los conteos y reportes, pero quedan fuera del flujo operativo diario.
 
 ## Comandos útiles
 - Ejecutar pruebas: `php artisan test`

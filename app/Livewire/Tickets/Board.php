@@ -12,20 +12,9 @@ class Board extends Component
 {
     public $search = '';
 
-    public $tickets = [
-        'pendiente'  => [],
-        'en_proceso' => [],
-        'validacion' => [],
-    ];
+    public $tickets = [];
 
-    public $conteos = [
-        'pendiente'  => 0,
-        'en_proceso' => 0,
-        'validacion' => 0,
-        'finalizado' => 0,
-        'rechazado'  => 0,
-        'cerrado'    => 0,
-    ];
+    public $conteos = [];
 
     public $mostrarModal = false;
     public $ticketSeleccionado;
@@ -218,22 +207,16 @@ class Board extends Component
             ->groupBy('estado')
             ->pluck('total', 'estado');
 
-        $this->conteos = [
-            'pendiente'  => $conteos->get('pendiente', 0),
-            'en_proceso' => $conteos->get('en_proceso', 0),
-            'validacion' => $conteos->get('validacion', 0),
-            'finalizado' => $conteos->get('finalizado', 0),
-            'rechazado'  => $conteos->get('rechazado', 0),
-            'cerrado'    => $conteos->get('cerrado', 0),
-        ];
+        $this->conteos = collect(Ticket::ESTADOS)
+            ->mapWithKeys(fn (string $estado) => [$estado => $conteos->get($estado, 0)])
+            ->toArray();
 
         $activosQuery = (clone $baseQuery)->activos();
 
-        $this->tickets = [
-            'pendiente'  => (clone $activosQuery)->estado('pendiente')->get(),
-            'en_proceso' => (clone $activosQuery)->estado('en_proceso')->get(),
-            'validacion' => (clone $activosQuery)->estado('validacion')->get(),
-        ];
+        $this->tickets = collect(Ticket::ESTADOS_ACTIVOS)
+            ->mapWithKeys(fn (string $estado) => [
+                $estado => (clone $activosQuery)->estado($estado)->get(),
+            ])->toArray();
     }
 
     public function updatedSearch()

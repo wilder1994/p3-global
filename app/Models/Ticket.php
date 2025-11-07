@@ -9,6 +9,43 @@ class Ticket extends Model
 {
     use HasFactory;
 
+    /**
+     * Catálogo de estados permitidos para los tickets.
+     *
+     * - pendiente   → Ticket recién creado que espera ser atendido.
+     * - en_proceso  → Ticket en ejecución por parte del responsable.
+     * - validacion  → Ticket completado que requiere aprobación.
+     * - finalizado  → Ticket concluido y aprobado.
+     * - rechazado   → Ticket invalidado durante la revisión.
+     * - cerrado     → Ticket clausurado manualmente por un administrador.
+     */
+    public const ESTADOS = [
+        'pendiente',
+        'en_proceso',
+        'validacion',
+        'finalizado',
+        'rechazado',
+        'cerrado',
+    ];
+
+    /**
+     * Subconjunto de estados considerados "activos" para tableros y vistas.
+     */
+    public const ESTADOS_ACTIVOS = [
+        'pendiente',
+        'en_proceso',
+        'validacion',
+    ];
+
+    /**
+     * Estados finales que se utilizan para métricas y filtros posteriores.
+     */
+    public const ESTADOS_FINALIZADOS = [
+        'finalizado',
+        'rechazado',
+        'cerrado',
+    ];
+
     protected $fillable = [
         'titulo',
         'puesto',
@@ -61,6 +98,6 @@ class Ticket extends Model
      */
     public function scopeActivos($query)
     {
-        return $query->whereIn('estado', ['pendiente', 'en_proceso', 'validacion']);
+        return $query->whereIn('estado', self::ESTADOS_ACTIVOS);
     }
 }
