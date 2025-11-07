@@ -107,13 +107,10 @@ Si importas una copia de datos reales asegúrate de ejecutar `php artisan permis
 Los estados disponibles se definen en `App\Models\Ticket::ESTADOS` y siguen este flujo:
 
 1. **pendiente** → el ticket acaba de crearse y está a la espera de ser atendido.
-2. **en_proceso** → el responsable está trabajando activamente en la solicitud.
-3. **validacion** → el trabajo ha sido completado y requiere aprobación o validación.
-4. **finalizado** → el ticket fue aprobado y queda cerrado automáticamente.
-5. **rechazado** → la validación falló; se documenta el motivo y no vuelve al tablero activo.
-6. **cerrado** → clausura manual por un administrador (por ejemplo, por duplicados o errores).
+2. **en_proceso** → el responsable está trabajando activamente en la solicitud. El primer comentario que se registre en el tablero cambia automáticamente el estado de pendiente a en proceso.
+3. **finalizado** → el ticket se cierra con un comentario que documenta la resolución. Mientras el ticket esté en proceso se pueden registrar comentarios adicionales sin modificar el estado.
 
-El tablero (`App\Livewire\Tickets\Board`) solo muestra los estados activos (`pendiente`, `en_proceso`, `validacion`). Los estados finales (`finalizado`, `rechazado`, `cerrado`) se reflejan en los conteos y reportes, pero quedan fuera del flujo operativo diario.
+El tablero (`App\Livewire\Tickets\Board`) muestra únicamente los estados activos (`pendiente`, `en_proceso`). El resumen superior incluye el total de finalizados y la vista `tickets.finalizados` permite revisar el detalle histórico.
 
 ## Comandos útiles
 - Ejecutar pruebas: `php artisan test`
