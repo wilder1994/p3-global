@@ -10,12 +10,10 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
-   public function run()
+    public function run()
     {
-        // Solo ejecutar el seeder si estás en entorno local
-        if (app()->environment('local')) {
-            $this->call(UserSeeder::class);
-        }
+        // Seeder intencionalmente vacío. La creación de usuarios y datos iniciales
+        // debe realizarse mediante los procedimientos documentados en README.
     }
 
 
