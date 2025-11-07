@@ -11,8 +11,12 @@
 
 
         {{-- 📊 Tarjetas resumen por estado --}}
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 flex-none">
-            @foreach (['pendiente'=>'Pendiente','en_proceso'=>'En proceso','validacion'=>'Validación','finalizado'=>'Finalizados'] as $key => $titulo)
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 flex-none">
+            @foreach ([
+                'pendiente' => 'Pendiente',
+                'en_proceso' => 'En proceso',
+                'finalizado' => 'Finalizados',
+            ] as $key => $titulo)
                 <div class="bg-white rounded-xl p-3 shadow text-center">
                     <h3 class="font-semibold mb-2">{{ $titulo }}</h3>
                     <div class="text-3xl font-bold text-blue-600">
@@ -55,12 +59,21 @@
                                 default   => ''
                             };
 
-                            $flujos = [
-                                'pendiente'  => 'en_proceso',
-                                'en_proceso' => 'validacion',
-                                'validacion' => 'finalizado',
+                            $acciones = [
+                                'pendiente' => [
+                                    'texto' => 'Pasar a en proceso',
+                                    'estado' => 'en_proceso',
+                                    'cambio' => true,
+                                    'color' => 'bg-blue-500',
+                                ],
+                                'en_proceso' => [
+                                    'texto' => 'Agregar comentario',
+                                    'estado' => 'en_proceso',
+                                    'cambio' => false,
+                                    'color' => 'bg-orange-500',
+                                ],
                             ];
-                            $siguiente = $flujos[$t->estado] ?? null;
+                            $accion = $acciones[$t->estado] ?? null;
                         @endphp
 
                         <tr class="{{ $rowColor }} hover:border-2 hover:border-gray-500 transition-all">
@@ -81,18 +94,21 @@
                                 </button>
                             </td>
                             <td class="p-2 border text-center">
-                                @if ($siguiente)
-                                    <button wire:click="confirmarCambioEstado({{ $t->id }}, '{{ $siguiente }}')"
-                                        class="px-3 py-1 rounded text-white whitespace-nowrap
-                                            @if($siguiente==='en_proceso') bg-blue-500
-                                            @elseif($siguiente==='validacion') bg-orange-500
-                                            @elseif($siguiente==='finalizado') bg-green-600
-                                            @endif">
+                                <div class="flex flex-col items-center gap-2">
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold bg-slate-700 text-white">
                                         {{ ucfirst(str_replace('_',' ',$t->estado)) }}
-                                    </button>
-                                @else
-                                    <span class="text-gray-400 italic">Finalizado</span>
-                                @endif
+                                    </span>
+
+                                    @if ($accion)
+                                        <button
+                                            wire:click="confirmarCambioEstado({{ $t->id }}, '{{ $accion['estado'] }}', @json($accion['cambio']))"
+                                            class="px-3 py-1 rounded text-white whitespace-nowrap {{ $accion['color'] }}">
+                                            {{ $accion['texto'] }}
+                                        </button>
+                                    @else
+                                        <span class="text-gray-400 italic text-sm">Sin acciones</span>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -116,12 +132,18 @@
 
                     <h2 class="text-lg font-bold mb-4">Confirmar cambio de estado</h2>
 
-                    <p class="mb-2 text-gray-700">
-                        Este ticket pasará al estado:
-                        <span class="font-semibold capitalize text-blue-600">
-                            {{ str_replace('_',' ', $nuevoEstado) }}
-                        </span>
-                    </p>
+                    @if($cambioEstado)
+                        <p class="mb-2 text-gray-700">
+                            Este ticket pasará al estado:
+                            <span class="font-semibold capitalize text-blue-600">
+                                {{ str_replace('_',' ', $nuevoEstado) }}
+                            </span>
+                        </p>
+                    @else
+                        <p class="mb-2 text-gray-700">
+                            Se registrará un comentario sin modificar el estado actual del ticket.
+                        </p>
+                    @endif
 
                     {{-- Comentario --}}
                     <textarea wire:model="comentario"
@@ -162,7 +184,7 @@
                         {{-- Confirmar cambio de estado normal --}}
                         <button wire:click="guardarCambioEstado"
                             class="bg-blue-600 text-white px-4 py-2 rounded">
-                            Confirmar
+                            {{ $cambioEstado ? 'Confirmar' : 'Guardar comentario' }}
                         </button>
 
                         {{-- Aprobar directamente --}}

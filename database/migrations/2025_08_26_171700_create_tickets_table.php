@@ -22,10 +22,7 @@ return new class extends Migration {
             $table->enum('estado', [
                 'pendiente',
                 'en_proceso',
-                'validacion',
                 'finalizado',
-                'rechazado',
-                'cerrado'
             ])->default('pendiente')->index();
 
             // Niveles de prioridad

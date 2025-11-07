@@ -21,6 +21,7 @@ class Board extends Component
     public $nuevoEstado;
     public $comentario = '';
     public $responsable = null;
+    public bool $cambioEstado = true;
 
     public $mostrarModalDetalles = false;
     public $ticketDetalle = null;
@@ -28,7 +29,6 @@ class Board extends Component
     protected $listeners = [
         'ticketCreado' => 'loadTickets',
         'finalizarTicketDesdeModal' => 'finalizarTicketDesdeModal',
-        'aprobarTicketDesdeModal' => 'aprobarTicketDesdeModal',
     ];
 
     protected ResponsibleUserService $responsibleUserService;
@@ -43,7 +43,7 @@ class Board extends Component
         $this->loadTickets();
     }
 
-    public function confirmarCambioEstado($id, $estado)
+    public function confirmarCambioEstado($id, $estado, $cambioEstado = true)
     {
         $ticket = $this->findTicketOrNotify($id);
 
@@ -53,6 +53,7 @@ class Board extends Component
 
         $this->ticketSeleccionado = $id;
         $this->nuevoEstado = $estado;
+        $this->cambioEstado = (bool) $cambioEstado;
         $this->comentario = '';
         $this->responsable = $ticket->asignado_a;
         $this->mostrarModal = true;
@@ -75,7 +76,14 @@ class Board extends Component
 
         $estadoAnterior = $ticket->estado;
         $asignadoAnterior = $ticket->asignado_a;
-        $ticket->estado = $this->nuevoEstado;
+
+        $aplicarCambioEstado = $this->cambioEstado
+            && $this->nuevoEstado
+            && $this->nuevoEstado !== $estadoAnterior;
+
+        if ($aplicarCambioEstado) {
+            $ticket->estado = $this->nuevoEstado;
+        }
 
         $comentarioFinal = $this->comentario;
 
@@ -90,7 +98,7 @@ class Board extends Component
             'ticket_id'       => $ticket->id,
             'usuario_id'      => Auth::id(),
             'estado_anterior' => $estadoAnterior,
-            'estado_nuevo'    => $this->nuevoEstado,
+            'estado_nuevo'    => $ticket->estado,
             'comentario'      => $comentarioFinal,
         ]);
 
@@ -112,18 +120,6 @@ class Board extends Component
         $this->resetModal();
     }
 
-    public function aprobarTicketDesdeModal()
-    {
-        $this->validate([
-            'comentario' => 'required|string|min:3',
-        ], [
-            'comentario.required' => 'Debe escribir un comentario para aprobar el ticket.',
-        ]);
-
-        $this->aprobarTicket($this->ticketSeleccionado, $this->comentario);
-        $this->resetModal();
-    }
-
     public function finalizarTicket($id, $comentario = null)
     {
         $ticket = $this->findTicketOrNotify($id);
@@ -140,28 +136,6 @@ class Board extends Component
             'estado_anterior' => $estadoAnterior,
             'estado_nuevo'    => 'finalizado',
             'comentario'      => $comentario ?? 'Finalizado directamente',
-        ]);
-
-        $this->loadTickets();
-    }
-
-    public function aprobarTicket($id, $comentario = null)
-    {
-        $ticket = $this->findTicketOrNotify($id);
-
-        if (! $ticket) return;
-
-        $estadoAnterior = $ticket->estado;
-        $ticket->estado = 'validacion';
-        $ticket->aprobado_por = Auth::id();
-        $ticket->save();
-
-        TicketLog::create([
-            'ticket_id'       => $ticket->id,
-            'usuario_id'      => Auth::id(),
-            'estado_anterior' => $estadoAnterior,
-            'estado_nuevo'    => 'validacion',
-            'comentario'      => $comentario ?? 'Aprobado directamente',
         ]);
 
         $this->loadTickets();
@@ -249,5 +223,7 @@ class Board extends Component
         $this->comentario = '';
         $this->responsable = null;
         $this->ticketSeleccionado = null;
+        $this->nuevoEstado = null;
+        $this->cambioEstado = true;
     }
 }
