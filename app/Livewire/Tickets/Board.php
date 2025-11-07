@@ -256,4 +256,5 @@ class Board extends Component
         $this->nuevoEstado = null;
         $this->cambioEstado = true;
     }
+
 }
