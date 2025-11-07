@@ -1,66 +1,105 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# P3 Global – Gestión de tickets
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplicación Laravel 10 orientada a la gestión del ciclo de vida de tickets operativos. Se apoya en Livewire 3 para las interfaces reactivas y en el paquete de permisos de Spatie para controlar el acceso a vistas y acciones administrativas.
 
-## About Laravel
+## Requisitos del sistema
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### Backend
+- PHP 8.1 o superior.
+- Composer 2.
+- Extensiones PHP habituales para Laravel: BCMath, Ctype, Fileinfo, JSON, Mbstring, OpenSSL, PDO, Tokenizer y XML.
+- Servidor de base de datos MySQL/MariaDB compatible con InnoDB.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Dependencias relevantes declaradas en `composer.json`:
+- `laravel/framework` ^10
+- `livewire/livewire` ^3.4 y `livewire/volt` ^1.0
+- `spatie/laravel-permission` ^6.21
+- `laravel/sanctum`, `laravel/tinker`, `guzzlehttp/guzzle`
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Frontend
+- Node.js 18 o superior.
+- npm 9 o superior.
 
-## Learning Laravel
+Dependencias de compilación front en `package.json`:
+- `vite` ^4, `laravel-vite-plugin`, `tailwindcss` ^3, `@tailwindcss/forms`, `autoprefixer`, `axios`.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Puesta en marcha
+1. Instalar dependencias de PHP y JavaScript:
+   ```bash
+   composer install
+   npm install
+   ```
+2. Copiar el archivo de entorno y generar la clave de la aplicación:
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+3. Configurar la base de datos en `.env` (ver sección siguiente) y crear un esquema vacío.
+4. Ejecutar las migraciones y sembrar los permisos base:
+   ```bash
+   php artisan migrate
+   php artisan db:seed --class=RolesAndPermissionsSeeder
+   php artisan permission:cache-reset
+   ```
+   > El `DatabaseSeeder` solo ejecuta `UserSeeder` cuando `APP_ENV=local`, por lo que en producción únicamente se crearán los registros que importes manualmente.
+5. Construir y levantar los servicios durante el desarrollo:
+   ```bash
+   npm run dev
+   php artisan serve
+   ```
+   Para compilaciones listas para producción utiliza `npm run build`.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Configuración de entorno (`.env`)
+- **APP_NAME / APP_URL**: nombre y URL pública que se mostrará en la interfaz.
+- **APP_ENV / APP_DEBUG**: establece `production` y `false` respectivamente al desplegar.
+- **DB_HOST / DB_PORT / DB_DATABASE / DB_USERNAME / DB_PASSWORD**: credenciales de la base de datos MySQL/MariaDB.
+- **QUEUE_CONNECTION**: por defecto es `sync`; cambia a `database` o `redis` si vas a procesar colas fuera de línea.
+- **FILESYSTEM_DISK**: define dónde se almacenarán archivos subidos; usa `public` y ejecuta `php artisan storage:link` si necesitas enlaces simbólicos.
+- **MAIL_MAILER** y campos asociados: necesarios si se enviarán notificaciones por correo.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Recuerda limpiar la caché de configuración tras cambios significativos:
+```bash
+php artisan config:cache
+php artisan route:cache
+```
 
-## Laravel Sponsors
+## Migraciones y estructura de datos
+Las migraciones relevantes se encuentran en `database/migrations`:
+- `2025_08_26_171700_create_tickets_table.php`: crea la tabla principal de tickets.
+- `2025_08_27_091310_create_ticket_logs_table.php`: almacena el historial de cambios por ticket.
+- `2025_08_27_204650_update_estado_enum_in_tickets_table.php`: actualiza el catálogo de estados.
+- `2025_08_26_170633_create_permission_tables.php`: tablas requeridas por Spatie Permission.
+- `2025_10_01_213840_add_is_active_to_users_table.php`: indicador de usuarios activos.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+Seeders disponibles:
+- `database/seeders/RolesAndPermissionsSeeder.php`: crea los permisos `tickets.*` y `admin.usuarios`, además de los roles (`operaciones`, `supervisor_control`, `coordinador_ti`, `validador`, `gerencia`, `admin`).
+- `database/seeders/UserSeeder.php`: genera usuarios de ejemplo (solo en entorno local).
 
-### Premium Partners
+Si importas una copia de datos reales asegúrate de ejecutar `php artisan permission:cache-reset` para que los roles aplicados se reflejen de inmediato.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+## Operación con datos reales
+1. Configura `APP_ENV=production` y `APP_DEBUG=false`.
+2. Realiza un respaldo antes de correr migraciones en un entorno con datos sensibles.
+3. Ejecuta `php artisan migrate --force` seguido de `php artisan db:seed --class=RolesAndPermissionsSeeder --force` para garantizar que los permisos sigan vigentes.
+4. Asigna roles a los usuarios mediante el módulo de administración (`/admin/users`) o con Tinker:
+   ```bash
+   php artisan tinker
+   >>> $user = App\Models\User::find(1);
+   >>> $user->syncRoles(['admin']);
+   ```
+5. Para sincronizar tickets externos respeta los campos definidos en `App\Models\Ticket` y registra sus cambios en `App\Models\TicketLog`.
 
-## Contributing
+## Referencias funcionales
+- **Rutas**: `routes/web.php` organiza el acceso a los paneles de administración y tickets, aplicando el middleware `role:admin` para las rutas de usuarios y `auth`/`verified` para las vistas de tablero y finalizados.
+- **Módulos Livewire de tickets** (`app/Livewire/Tickets`):
+  - `Form.php` valida y crea nuevos tickets, notificando al tablero mediante eventos Livewire.
+  - `Board.php` muestra tickets activos, permite cambiar estados, reasignar responsables y registra los eventos en `TicketLog`.
+  - `Finalizados.php` lista los tickets completados con filtros por prioridad y buscador.
+- **Permisos Spatie**: además del seeder, los middlewares `role`, `permission` y `role_or_permission` se registran en `app/Http/Kernel.php`; la configuración completa está en `config/permission.php`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Comandos útiles
+- Ejecutar pruebas: `php artisan test`
+- Ejecutar Pint (estilo): `./vendor/bin/pint`
+- Limpiar y reconstruir cachés: `php artisan optimize:clear && php artisan optimize`
 
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Con estos pasos podrás levantar la aplicación en un entorno local o productivo y mantener consistentes los permisos y procesos relacionados con la gestión de tickets.
