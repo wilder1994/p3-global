@@ -47,6 +47,12 @@ Route::get('/tickets/board', function () {
 })->middleware(['auth', 'verified'])
   ->name('tickets.board');
 
+// Tickets en proceso
+Route::get('/tickets/en-proceso', function () {
+    return view('livewire.tickets.in-process-page');
+})->middleware(['auth', 'verified'])
+  ->name('tickets.en_proceso');
+
 // Perfil de usuario
 Route::view('profile', 'profile')
     ->middleware(['auth'])

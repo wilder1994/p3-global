@@ -14,18 +14,12 @@ class Ticket extends Model
      *
      * - pendiente   → Ticket recién creado que espera ser atendido.
      * - en_proceso  → Ticket en ejecución por parte del responsable.
-     * - validacion  → Ticket completado que requiere aprobación.
-     * - finalizado  → Ticket concluido y aprobado.
-     * - rechazado   → Ticket invalidado durante la revisión.
-     * - cerrado     → Ticket clausurado manualmente por un administrador.
+     * - finalizado  → Ticket concluido y documentado.
      */
     public const ESTADOS = [
         'pendiente',
         'en_proceso',
-        'validacion',
         'finalizado',
-        'rechazado',
-        'cerrado',
     ];
 
     /**
@@ -34,7 +28,6 @@ class Ticket extends Model
     public const ESTADOS_ACTIVOS = [
         'pendiente',
         'en_proceso',
-        'validacion',
     ];
 
     /**
@@ -42,8 +35,6 @@ class Ticket extends Model
      */
     public const ESTADOS_FINALIZADOS = [
         'finalizado',
-        'rechazado',
-        'cerrado',
     ];
 
     protected $fillable = [
@@ -94,7 +85,7 @@ class Ticket extends Model
     }
 
     /**
-     * Scope a query to only include active tickets that are not finalizados, rechazados o cerrados.
+     * Scope a query to only include active tickets that are not finalizados.
      */
     public function scopeActivos($query)
     {

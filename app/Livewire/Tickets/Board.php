@@ -21,14 +21,29 @@ class Board extends Component
     public $nuevoEstado;
     public $comentario = '';
     public $responsable = null;
+    public bool $cambioEstado = true;
 
     public $mostrarModalDetalles = false;
     public $ticketDetalle = null;
 
+    /**
+     * Estados que deben mostrarse en la tabla actual.
+     */
+    public array $estadosVisibles = [];
+
+    /**
+     * Texto del encabezado de la tabla.
+     */
+    public string $tituloTabla = 'Listado de Tickets';
+
+    /**
+     * Mensaje a mostrar cuando no existan tickets en la vista.
+     */
+    public string $mensajeVacio = 'No hay tickets registrados';
+
     protected $listeners = [
         'ticketCreado' => 'loadTickets',
         'finalizarTicketDesdeModal' => 'finalizarTicketDesdeModal',
-        'aprobarTicketDesdeModal' => 'aprobarTicketDesdeModal',
     ];
 
     protected ResponsibleUserService $responsibleUserService;
@@ -38,12 +53,22 @@ class Board extends Component
         $this->responsibleUserService = $responsibleUserService;
     }
 
-    public function mount()
+    public function mount(array $estadosVisibles = [], ?string $tituloTabla = null, ?string $mensajeVacio = null)
     {
+        $this->estadosVisibles = $this->normalizarEstadosVisibles($estadosVisibles);
+
+        if ($tituloTabla) {
+            $this->tituloTabla = $tituloTabla;
+        }
+
+        if ($mensajeVacio) {
+            $this->mensajeVacio = $mensajeVacio;
+        }
+
         $this->loadTickets();
     }
 
-    public function confirmarCambioEstado($id, $estado)
+    public function confirmarCambioEstado($id, $estado, $cambioEstado = true)
     {
         $ticket = $this->findTicketOrNotify($id);
 
@@ -53,6 +78,7 @@ class Board extends Component
 
         $this->ticketSeleccionado = $id;
         $this->nuevoEstado = $estado;
+        $this->cambioEstado = (bool) $cambioEstado;
         $this->comentario = '';
         $this->responsable = $ticket->asignado_a;
         $this->mostrarModal = true;
@@ -75,7 +101,14 @@ class Board extends Component
 
         $estadoAnterior = $ticket->estado;
         $asignadoAnterior = $ticket->asignado_a;
-        $ticket->estado = $this->nuevoEstado;
+
+        $aplicarCambioEstado = $this->cambioEstado
+            && $this->nuevoEstado
+            && $this->nuevoEstado !== $estadoAnterior;
+
+        if ($aplicarCambioEstado) {
+            $ticket->estado = $this->nuevoEstado;
+        }
 
         $comentarioFinal = $this->comentario;
 
@@ -90,7 +123,7 @@ class Board extends Component
             'ticket_id'       => $ticket->id,
             'usuario_id'      => Auth::id(),
             'estado_anterior' => $estadoAnterior,
-            'estado_nuevo'    => $this->nuevoEstado,
+            'estado_nuevo'    => $ticket->estado,
             'comentario'      => $comentarioFinal,
         ]);
 
@@ -112,18 +145,6 @@ class Board extends Component
         $this->resetModal();
     }
 
-    public function aprobarTicketDesdeModal()
-    {
-        $this->validate([
-            'comentario' => 'required|string|min:3',
-        ], [
-            'comentario.required' => 'Debe escribir un comentario para aprobar el ticket.',
-        ]);
-
-        $this->aprobarTicket($this->ticketSeleccionado, $this->comentario);
-        $this->resetModal();
-    }
-
     public function finalizarTicket($id, $comentario = null)
     {
         $ticket = $this->findTicketOrNotify($id);
@@ -140,28 +161,6 @@ class Board extends Component
             'estado_anterior' => $estadoAnterior,
             'estado_nuevo'    => 'finalizado',
             'comentario'      => $comentario ?? 'Finalizado directamente',
-        ]);
-
-        $this->loadTickets();
-    }
-
-    public function aprobarTicket($id, $comentario = null)
-    {
-        $ticket = $this->findTicketOrNotify($id);
-
-        if (! $ticket) return;
-
-        $estadoAnterior = $ticket->estado;
-        $ticket->estado = 'validacion';
-        $ticket->aprobado_por = Auth::id();
-        $ticket->save();
-
-        TicketLog::create([
-            'ticket_id'       => $ticket->id,
-            'usuario_id'      => Auth::id(),
-            'estado_anterior' => $estadoAnterior,
-            'estado_nuevo'    => 'validacion',
-            'comentario'      => $comentario ?? 'Aprobado directamente',
         ]);
 
         $this->loadTickets();
@@ -211,9 +210,11 @@ class Board extends Component
             ->mapWithKeys(fn (string $estado) => [$estado => $conteos->get($estado, 0)])
             ->toArray();
 
-        $activosQuery = (clone $baseQuery)->activos();
+        $estadosObjetivo = $this->estadosVisibles ?: Ticket::ESTADOS_ACTIVOS;
 
-        $this->tickets = collect(Ticket::ESTADOS_ACTIVOS)
+        $activosQuery = (clone $baseQuery)->whereIn('estado', $estadosObjetivo);
+
+        $this->tickets = collect($estadosObjetivo)
             ->mapWithKeys(fn (string $estado) => [
                 $estado => (clone $activosQuery)->estado($estado)->get(),
             ])->toArray();
@@ -234,6 +235,9 @@ class Board extends Component
             'usuarios' => $this->responsibleUserService->all(),
             'ticketsPlanos' => $ticketsPlanos,
             'ticketsPorEstado' => $this->tickets,
+            'tituloTabla' => $this->tituloTabla,
+            'mensajeVacio' => $this->mensajeVacio,
+            'estadosVisibles' => $this->estadosVisibles,
         ]);
     }
 
@@ -249,5 +253,20 @@ class Board extends Component
         $this->comentario = '';
         $this->responsable = null;
         $this->ticketSeleccionado = null;
+        $this->nuevoEstado = null;
+        $this->cambioEstado = true;
+    }
+
+    private function normalizarEstadosVisibles(array $estados): array
+    {
+        if (empty($estados)) {
+            return Ticket::ESTADOS_ACTIVOS;
+        }
+
+        $validos = array_intersect($estados, Ticket::ESTADOS);
+
+        return ! empty($validos)
+            ? array_values(array_unique($validos))
+            : Ticket::ESTADOS_ACTIVOS;
     }
 }
