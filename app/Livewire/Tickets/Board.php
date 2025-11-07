@@ -195,13 +195,13 @@ class Board extends Component
     {
         $ordenPrioridad = "FIELD(prioridad,'urgente','alta','media','baja')";
 
-        $todos = Ticket::with(['creador', 'asignado'])
+        $baseQuery = Ticket::with(['creador', 'asignado'])
             ->orderByRaw($ordenPrioridad)
             ->orderByDesc('created_at');
 
         if ($this->search) {
             $search = $this->search;
-            $todos->where(function($q) use ($search) {
+            $baseQuery->where(function($q) use ($search) {
                 $q->where('titulo', 'like', "%{$search}%")
                     ->orWhere('descripcion', 'like', "%{$search}%")
                     ->orWhere('prioridad', 'like', "%{$search}%")
@@ -212,23 +212,27 @@ class Board extends Component
             });
         }
 
-        $todos = $todos->get();
+        $conteos = (clone $baseQuery)
+            ->selectRaw('estado, COUNT(*) as total')
+            ->reorder()
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
 
         $this->conteos = [
-            'pendiente'  => $todos->where('estado', 'pendiente')->count(),
-            'en_proceso' => $todos->where('estado', 'en_proceso')->count(),
-            'validacion' => $todos->where('estado', 'validacion')->count(),
-            'finalizado' => $todos->where('estado', 'finalizado')->count(),
-            'rechazado'  => $todos->where('estado', 'rechazado')->count(),
-            'cerrado'    => $todos->where('estado', 'cerrado')->count(),
+            'pendiente'  => $conteos->get('pendiente', 0),
+            'en_proceso' => $conteos->get('en_proceso', 0),
+            'validacion' => $conteos->get('validacion', 0),
+            'finalizado' => $conteos->get('finalizado', 0),
+            'rechazado'  => $conteos->get('rechazado', 0),
+            'cerrado'    => $conteos->get('cerrado', 0),
         ];
 
-        $activos = $todos->filter(fn($t) => !in_array(strtolower($t->estado), ['finalizado','rechazado','cerrado']));
+        $activosQuery = (clone $baseQuery)->activos();
 
         $this->tickets = [
-            'pendiente'  => $activos->where('estado', 'pendiente'),
-            'en_proceso' => $activos->where('estado', 'en_proceso'),
-            'validacion' => $activos->where('estado', 'validacion'),
+            'pendiente'  => (clone $activosQuery)->estado('pendiente')->get(),
+            'en_proceso' => (clone $activosQuery)->estado('en_proceso')->get(),
+            'validacion' => (clone $activosQuery)->estado('validacion')->get(),
         ];
     }
 
@@ -239,8 +243,14 @@ class Board extends Component
 
     public function render()
     {
+        $ticketsPlanos = collect($this->tickets)
+            ->flatMap(fn($items) => collect($items))
+            ->values();
+
         return view('livewire.tickets.board', [
             'usuarios' => $this->responsibleUserService->all(),
+            'ticketsPlanos' => $ticketsPlanos,
+            'ticketsPorEstado' => $this->tickets,
         ]);
     }
 

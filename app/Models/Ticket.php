@@ -47,4 +47,20 @@ class Ticket extends Model
     {
         return $this->hasMany(TicketLog::class);
     }
+
+    /**
+     * Scope a query to only include tickets that match the given estado.
+     */
+    public function scopeEstado($query, string $estado)
+    {
+        return $query->where('estado', $estado);
+    }
+
+    /**
+     * Scope a query to only include active tickets that are not finalizados, rechazados o cerrados.
+     */
+    public function scopeActivos($query)
+    {
+        return $query->whereIn('estado', ['pendiente', 'en_proceso', 'validacion']);
+    }
 }
