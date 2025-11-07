@@ -26,6 +26,21 @@ class Board extends Component
     public $mostrarModalDetalles = false;
     public $ticketDetalle = null;
 
+    /**
+     * Estados que deben mostrarse en la tabla actual.
+     */
+    public array $estadosVisibles = [];
+
+    /**
+     * Texto del encabezado de la tabla.
+     */
+    public string $tituloTabla = 'Listado de Tickets';
+
+    /**
+     * Mensaje a mostrar cuando no existan tickets en la vista.
+     */
+    public string $mensajeVacio = 'No hay tickets registrados';
+
     protected $listeners = [
         'ticketCreado' => 'loadTickets',
         'finalizarTicketDesdeModal' => 'finalizarTicketDesdeModal',
@@ -38,8 +53,18 @@ class Board extends Component
         $this->responsibleUserService = $responsibleUserService;
     }
 
-    public function mount()
+    public function mount(array $estadosVisibles = [], ?string $tituloTabla = null, ?string $mensajeVacio = null)
     {
+        $this->estadosVisibles = $this->normalizarEstadosVisibles($estadosVisibles);
+
+        if ($tituloTabla) {
+            $this->tituloTabla = $tituloTabla;
+        }
+
+        if ($mensajeVacio) {
+            $this->mensajeVacio = $mensajeVacio;
+        }
+
         $this->loadTickets();
     }
 
@@ -210,6 +235,9 @@ class Board extends Component
             'usuarios' => $this->responsibleUserService->all(),
             'ticketsPlanos' => $ticketsPlanos,
             'ticketsPorEstado' => $this->tickets,
+            'tituloTabla' => $this->tituloTabla,
+            'mensajeVacio' => $this->mensajeVacio,
+            'estadosVisibles' => $this->estadosVisibles,
         ]);
     }
 
