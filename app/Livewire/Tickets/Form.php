@@ -4,7 +4,7 @@ namespace App\Livewire\Tickets;
 
 use Livewire\Component;
 use App\Models\Ticket;
-use App\Models\User;
+use App\Services\ResponsibleUserService;
 use Illuminate\Validation\Rule;
 
 class Form extends Component
@@ -17,6 +17,13 @@ class Form extends Component
     public $responsable;
     public $descripcion;
     public $prioridad = 'media';
+
+    protected ResponsibleUserService $responsibleUserService;
+
+    public function boot(ResponsibleUserService $responsibleUserService): void
+    {
+        $this->responsibleUserService = $responsibleUserService;
+    }
 
     public function rules()
     {
@@ -59,7 +66,7 @@ class Form extends Component
     public function render()
     {
         return view('livewire.tickets.form', [
-            'usuarios' => User::all(), // 👈 listado de responsables reales
+            'usuarios' => $this->responsibleUserService->all(),
         ]);
     }
 }

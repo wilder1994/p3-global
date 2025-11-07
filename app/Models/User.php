@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -45,4 +46,20 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean', // 👈 nuevo
     ];
+
+    /**
+     * Scope para limitar los usuarios que pueden ser responsables de tickets.
+     */
+    public function scopeResponsables(Builder $query): Builder
+    {
+        $query->where('is_active', true);
+
+        $roles = config('tickets.responsable_roles', []);
+
+        if (! empty($roles)) {
+            $query->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->whereIn('name', $roles));
+        }
+
+        return $query;
+    }
 }

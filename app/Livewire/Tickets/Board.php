@@ -5,7 +5,7 @@ namespace App\Livewire\Tickets;
 use Livewire\Component;
 use App\Models\Ticket;
 use App\Models\TicketLog;
-use App\Models\User;
+use App\Services\ResponsibleUserService;
 use Illuminate\Support\Facades\Auth;
 
 class Board extends Component
@@ -32,7 +32,6 @@ class Board extends Component
     public $nuevoEstado;
     public $comentario = '';
     public $responsable = null;
-    public $usuarios;
 
     public $mostrarModalDetalles = false;
     public $ticketDetalle = null;
@@ -43,10 +42,16 @@ class Board extends Component
         'aprobarTicketDesdeModal' => 'aprobarTicketDesdeModal',
     ];
 
+    protected ResponsibleUserService $responsibleUserService;
+
+    public function boot(ResponsibleUserService $responsibleUserService): void
+    {
+        $this->responsibleUserService = $responsibleUserService;
+    }
+
     public function mount()
     {
         $this->loadTickets();
-        $this->usuarios = User::all();
     }
 
     public function confirmarCambioEstado($id, $estado)
@@ -216,7 +221,9 @@ class Board extends Component
 
     public function render()
     {
-        return view('livewire.tickets.board');
+        return view('livewire.tickets.board', [
+            'usuarios' => $this->responsibleUserService->all(),
+        ]);
     }
 
     public function verDetalles($id)
