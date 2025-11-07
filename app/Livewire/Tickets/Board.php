@@ -12,7 +12,8 @@ class Board extends Component
 {
     public $search = '';
 
-    public $tickets = [];
+    // tickets será SIEMPRE una Collection de Collections de modelos (NO arrays)
+    public $tickets;
 
     public $conteos = [];
 
@@ -42,7 +43,7 @@ class Board extends Component
     public string $mensajeVacio = 'No hay tickets registrados';
 
     protected $listeners = [
-        'ticketCreado' => 'loadTickets',
+        'ticketCreado'              => 'loadTickets',
         'finalizarTicketDesdeModal' => 'finalizarTicketDesdeModal',
     ];
 
@@ -68,6 +69,80 @@ class Board extends Component
         $this->loadTickets();
     }
 
+    public function filtrar(): void
+    {
+        $this->loadTickets();
+    }
+
+    protected function normalizarEstadosVisibles(array $estadosVisibles): array
+    {
+        if (empty($estadosVisibles)) {
+            return Ticket::ESTADOS_ACTIVOS;
+        }
+
+        $visibles = array_intersect($estadosVisibles, Ticket::ESTADOS_ACTIVOS);
+
+        return array_values($visibles);
+    }
+
+    /**
+     * Livewire hook: se ejecuta cada vez que cambia $search.
+     * NO lo llames desde la vista. Sólo usa wire:model.
+     */
+    public function updatedSearch(): void
+    {
+        $this->loadTickets();
+    }
+
+    protected function loadTickets(): void
+    {
+        $ordenPrioridad = "FIELD(prioridad,'urgente','alta','media','baja')";
+
+        $baseQuery = Ticket::with(['creador', 'asignado'])
+            ->orderByRaw($ordenPrioridad)
+            ->orderByDesc('created_at');
+
+        // 🔍 Filtro por búsqueda
+        if (!empty($this->search)) {
+            $search = mb_strtolower(trim($this->search));
+
+            $baseQuery->where(function ($q) use ($search) {
+                $q->whereRaw('LOWER(titulo) LIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('LOWER(descripcion) LIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('LOWER(prioridad) LIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('LOWER(estado) LIKE ?', ["%{$search}%"])
+                    ->orWhereHas('creador', function ($q2) use ($search) {
+                        $q2->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"]);
+                    })
+                    ->orWhereHas('asignado', function ($q2) use ($search) {
+                        $q2->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"]);
+                    });
+            });
+        }
+
+        // 📊 Conteos por estado (evitando el error 1055)
+        $conteos = (clone $baseQuery)
+            ->reorder() // elimina ORDER BY heredados
+            ->selectRaw('estado, COUNT(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        $this->conteos = [
+            'pendiente'   => (int) ($conteos['pendiente']   ?? 0),
+            'en_proceso'  => (int) ($conteos['en_proceso']  ?? 0),
+            'finalizado'  => (int) ($conteos['finalizado']  ?? 0),
+        ];
+
+        // 🧾 Tickets activos por estado
+        $activosQuery = (clone $baseQuery)->activos();
+
+        // 👇 IMPORTANTE: NO usamos ->toArray(). Queremos modelos, no arrays.
+        $this->tickets = collect(Ticket::ESTADOS_ACTIVOS)
+            ->mapWithKeys(fn (string $estado) => [
+                $estado => (clone $activosQuery)->estado($estado)->get(),
+            ]);
+    }
+
     public function confirmarCambioEstado($id, $estado, $cambioEstado = true)
     {
         $ticket = $this->findTicketOrNotify($id);
@@ -77,11 +152,11 @@ class Board extends Component
         }
 
         $this->ticketSeleccionado = $id;
-        $this->nuevoEstado = $estado;
-        $this->cambioEstado = (bool) $cambioEstado;
-        $this->comentario = '';
-        $this->responsable = $ticket->asignado_a;
-        $this->mostrarModal = true;
+        $this->nuevoEstado        = $estado;
+        $this->cambioEstado       = (bool) $cambioEstado;
+        $this->comentario         = '';
+        $this->responsable        = $ticket->asignado_a;
+        $this->mostrarModal       = true;
     }
 
     public function guardarCambioEstado()
@@ -99,7 +174,7 @@ class Board extends Component
             return;
         }
 
-        $estadoAnterior = $ticket->estado;
+        $estadoAnterior   = $ticket->estado;
         $asignadoAnterior = $ticket->asignado_a;
 
         $aplicarCambioEstado = $this->cambioEstado
@@ -114,7 +189,7 @@ class Board extends Component
 
         if ($this->responsable && $this->responsable != $asignadoAnterior) {
             $ticket->asignado_a = $this->responsable;
-            $comentarioFinal = "[Cambio de responsable] " . $comentarioFinal;
+            $comentarioFinal    = '[Cambio de responsable] '.$comentarioFinal;
         }
 
         $ticket->save();
@@ -149,7 +224,9 @@ class Board extends Component
     {
         $ticket = $this->findTicketOrNotify($id);
 
-        if (! $ticket) return;
+        if (! $ticket) {
+            return;
+        }
 
         $estadoAnterior = $ticket->estado;
         $ticket->estado = 'finalizado';
@@ -172,89 +249,48 @@ class Board extends Component
 
         if (! $ticket) {
             session()->flash('error', 'Ticket no encontrado.');
-
             return null;
         }
 
         return $ticket;
     }
 
-   protected function loadTickets()
-    {
-        $ordenPrioridad = "FIELD(prioridad,'urgente','alta','media','baja')";
-    
-        $baseQuery = Ticket::with(['creador', 'asignado'])
-            ->orderByRaw($ordenPrioridad)
-            ->orderByDesc('created_at');
-    
-        if ($this->search) {
-            $search = $this->search;
-            $baseQuery->where(function($q) use ($search) {
-                $q->where('titulo', 'like', "%{$search}%")
-                    ->orWhere('descripcion', 'like', "%{$search}%")
-                    ->orWhere('prioridad', 'like', "%{$search}%")
-                    ->orWhere('estado', 'like', "%{$search}%")
-                    ->orWhereHas('creador', function($q2) use ($search) {
-                        $q2->where('name', 'like', "%{$search}%");
-                    });
-            });
-        }
-    
-        $conteos = (clone $baseQuery)
-            ->selectRaw('estado, COUNT(*) as total')
-            ->reorder()
-            ->groupBy('estado')
-            ->pluck('total', 'estado');
-    
-        $this->conteos = collect(Ticket::ESTADOS)
-            ->mapWithKeys(fn (string $estado) => [$estado => $conteos->get($estado, 0)])
-            ->toArray();
-    
-        $activosQuery = (clone $baseQuery)->activos();
-    
-        // 👇 SIN ->toArray()
-        $this->tickets = collect(Ticket::ESTADOS_ACTIVOS)
-            ->mapWithKeys(fn (string $estado) => [
-                $estado => (clone $activosQuery)->estado($estado)->get(),
-            ]);
-    }
-
-
-    public function updatedSearch()
-    {
-        $this->loadTickets();
-    }
-
-    public function render()
-    {
-        $ticketsPlanos = collect($this->tickets)
-            ->flatMap(fn($items) => collect($items))
-            ->values();
-
-        return view('livewire.tickets.board', [
-            'usuarios' => $this->responsibleUserService->all(),
-            'ticketsPlanos' => $ticketsPlanos,
-            'ticketsPorEstado' => $this->tickets,
-            'tituloTabla' => $this->tituloTabla,
-            'mensajeVacio' => $this->mensajeVacio,
-            'estadosVisibles' => $this->estadosVisibles,
-        ]);
-    }
-
     public function verDetalles($id)
     {
-        $this->ticketDetalle = Ticket::with(['creador', 'logs.usuario'])->find($id);
+        $this->ticketDetalle        = Ticket::with(['creador', 'logs.usuario'])->find($id);
         $this->mostrarModalDetalles = true;
     }
 
     protected function resetModal()
     {
-        $this->mostrarModal = false;
-        $this->comentario = '';
-        $this->responsable = null;
+        $this->mostrarModal       = false;
+        $this->comentario         = '';
+        $this->responsable        = null;
         $this->ticketSeleccionado = null;
-        $this->nuevoEstado = null;
-        $this->cambioEstado = true;
+        $this->nuevoEstado        = null;
+        $this->cambioEstado       = true;
     }
 
+    public function render()
+    {
+        $estados = $this->estadosVisibles ?: Ticket::ESTADOS_ACTIVOS;
+
+        // $this->tickets es una Collection de [estado => Collection< Ticket >]
+        $ticketsPorEstado = ($this->tickets instanceof \Illuminate\Support\Collection)
+            ? $this->tickets->only($estados)
+            : collect($this->tickets)->only($estados);
+
+        $ticketsPlanos = $ticketsPorEstado
+            ->flatMap(fn ($items) => $items) // sigue siendo Collection de modelos
+            ->values();
+
+        return view('livewire.tickets.board', [
+            'usuarios'         => $this->responsibleUserService->all(),
+            'ticketsPlanos'    => $ticketsPlanos,
+            'ticketsPorEstado' => $ticketsPorEstado,
+            'tituloTabla'      => $this->tituloTabla,
+            'mensajeVacio'     => $this->mensajeVacio,
+            'estadosVisibles'  => $this->estadosVisibles,
+        ]);
+    }
 }
