@@ -137,10 +137,14 @@
                     <div class="mb-4">
                         <label class="block text-sm font-semibold mb-1">Asignar responsable:</label>
                         <select wire:model.defer="responsable" class="border rounded px-3 py-2 w-full bg-white">
-                            <option value="">Seleccionar responsable</option>
-                            @foreach($usuarios as $usuario)
-                                <option value="{{ $usuario->id }}">{{ $usuario->name }}</option>
-                            @endforeach
+                            @if($usuarios->isEmpty())
+                                <option value="" disabled>No hay responsables disponibles</option>
+                            @else
+                                <option value="">Seleccionar responsable</option>
+                                @foreach($usuarios as $usuario)
+                                    <option value="{{ $usuario->id }}">{{ $usuario->name }}</option>
+                                @endforeach
+                            @endif
                         </select>
                         @error('responsable')
                             <div class="text-red-600 text-sm mt-1">Debe asignar un responsable</div>
