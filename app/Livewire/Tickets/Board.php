@@ -180,14 +180,14 @@ class Board extends Component
         return $ticket;
     }
 
-    protected function loadTickets()
+   protected function loadTickets()
     {
         $ordenPrioridad = "FIELD(prioridad,'urgente','alta','media','baja')";
-
+    
         $baseQuery = Ticket::with(['creador', 'asignado'])
             ->orderByRaw($ordenPrioridad)
             ->orderByDesc('created_at');
-
+    
         if ($this->search) {
             $search = $this->search;
             $baseQuery->where(function($q) use ($search) {
@@ -200,24 +200,26 @@ class Board extends Component
                     });
             });
         }
-
+    
         $conteos = (clone $baseQuery)
             ->selectRaw('estado, COUNT(*) as total')
             ->reorder()
             ->groupBy('estado')
             ->pluck('total', 'estado');
-
+    
         $this->conteos = collect(Ticket::ESTADOS)
             ->mapWithKeys(fn (string $estado) => [$estado => $conteos->get($estado, 0)])
             ->toArray();
-
+    
         $activosQuery = (clone $baseQuery)->activos();
-
+    
+        // 👇 SIN ->toArray()
         $this->tickets = collect(Ticket::ESTADOS_ACTIVOS)
             ->mapWithKeys(fn (string $estado) => [
                 $estado => (clone $activosQuery)->estado($estado)->get(),
-            ])->toArray();
+            ]);
     }
+
 
     public function updatedSearch()
     {
