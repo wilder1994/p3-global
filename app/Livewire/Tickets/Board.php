@@ -179,14 +179,14 @@ class Board extends Component
         return $ticket;
     }
 
-    protected function loadTickets()
+   protected function loadTickets()
     {
         $ordenPrioridad = "FIELD(prioridad,'urgente','alta','media','baja')";
-
+    
         $baseQuery = Ticket::with(['creador', 'asignado'])
             ->orderByRaw($ordenPrioridad)
             ->orderByDesc('created_at');
-
+    
         if ($this->search) {
             $search = $this->search;
             $baseQuery->where(function($q) use ($search) {
@@ -199,26 +199,26 @@ class Board extends Component
                     });
             });
         }
-
+    
         $conteos = (clone $baseQuery)
             ->selectRaw('estado, COUNT(*) as total')
             ->reorder()
             ->groupBy('estado')
             ->pluck('total', 'estado');
-
+    
         $this->conteos = collect(Ticket::ESTADOS)
             ->mapWithKeys(fn (string $estado) => [$estado => $conteos->get($estado, 0)])
             ->toArray();
-
-        $estadosObjetivo = $this->estadosVisibles ?: Ticket::ESTADOS_ACTIVOS;
-
-        $activosQuery = (clone $baseQuery)->whereIn('estado', $estadosObjetivo);
-
-        $this->tickets = collect($estadosObjetivo)
+    
+        $activosQuery = (clone $baseQuery)->activos();
+    
+        // 👇 SIN ->toArray()
+        $this->tickets = collect(Ticket::ESTADOS_ACTIVOS)
             ->mapWithKeys(fn (string $estado) => [
                 $estado => (clone $activosQuery)->estado($estado)->get(),
-            ])->toArray();
+            ]);
     }
+
 
     public function updatedSearch()
     {
@@ -255,18 +255,5 @@ class Board extends Component
         $this->ticketSeleccionado = null;
         $this->nuevoEstado = null;
         $this->cambioEstado = true;
-    }
-
-    private function normalizarEstadosVisibles(array $estados): array
-    {
-        if (empty($estados)) {
-            return Ticket::ESTADOS_ACTIVOS;
-        }
-
-        $validos = array_intersect($estados, Ticket::ESTADOS);
-
-        return ! empty($validos)
-            ? array_values(array_unique($validos))
-            : Ticket::ESTADOS_ACTIVOS;
     }
 }
