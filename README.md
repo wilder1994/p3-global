@@ -44,7 +44,7 @@ Dependencias de compilación front en `package.json`:
    php artisan db:seed --class=RolesAndPermissionsSeeder
    php artisan permission:cache-reset
    ```
-   > El `DatabaseSeeder` solo ejecuta `UserSeeder` cuando `APP_ENV=local`, por lo que en producción únicamente se crearán los registros que importes manualmente.
+   > El `DatabaseSeeder` no ejecuta seeders automáticos; trabaja exclusivamente con datos reales y lanza de forma manual los procesos que necesites.
 5. Construir y levantar los servicios durante el desarrollo:
    ```bash
    npm run dev
@@ -80,7 +80,6 @@ Las migraciones relevantes se encuentran en `database/migrations`:
 
 Seeders disponibles:
 - `database/seeders/RolesAndPermissionsSeeder.php`: crea los permisos `tickets.*` y `admin.usuarios`, además de los roles (`operaciones`, `supervisor_control`, `coordinador_ti`, `validador`, `gerencia`, `admin`).
-- `database/seeders/UserSeeder.php`: genera usuarios de ejemplo (solo en entorno local).
 
 Si importas una copia de datos reales asegúrate de ejecutar `php artisan permission:cache-reset` para que los roles aplicados se reflejen de inmediato.
 
@@ -108,13 +107,10 @@ Si importas una copia de datos reales asegúrate de ejecutar `php artisan permis
 Los estados disponibles se definen en `App\Models\Ticket::ESTADOS` y siguen este flujo:
 
 1. **pendiente** → el ticket acaba de crearse y está a la espera de ser atendido.
-2. **en_proceso** → el responsable está trabajando activamente en la solicitud.
-3. **validacion** → el trabajo ha sido completado y requiere aprobación o validación.
-4. **finalizado** → el ticket fue aprobado y queda cerrado automáticamente.
-5. **rechazado** → la validación falló; se documenta el motivo y no vuelve al tablero activo.
-6. **cerrado** → clausura manual por un administrador (por ejemplo, por duplicados o errores).
+2. **en_proceso** → el responsable está trabajando activamente en la solicitud. El primer comentario que se registre en el tablero cambia automáticamente el estado de pendiente a en proceso.
+3. **finalizado** → el ticket se cierra con un comentario que documenta la resolución. Mientras el ticket esté en proceso se pueden registrar comentarios adicionales sin modificar el estado.
 
-El tablero (`App\Livewire\Tickets\Board`) solo muestra los estados activos (`pendiente`, `en_proceso`, `validacion`). Los estados finales (`finalizado`, `rechazado`, `cerrado`) se reflejan en los conteos y reportes, pero quedan fuera del flujo operativo diario.
+El tablero (`App\Livewire\Tickets\Board`) muestra únicamente los estados activos (`pendiente`, `en_proceso`). El resumen superior incluye el total de finalizados y la vista `tickets.finalizados` permite revisar el detalle histórico.
 
 ## Comandos útiles
 - Ejecutar pruebas: `php artisan test`
